@@ -20,6 +20,7 @@ import android.preference.PreferenceManager;
 import android.service.wallpaper.WallpaperService;
 import android.text.TextPaint;
 import android.util.DisplayMetrics;
+import android.util.JsonReader;
 import android.util.Log;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
@@ -28,16 +29,28 @@ import android.view.WindowManager;
 
 import androidx.core.content.res.ResourcesCompat;
 
+import org.json.JSONObject;
+import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
+import org.xml.sax.helpers.XMLReaderFactory;
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+import org.xmlpull.v1.XmlPullParserFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class SubsolarWallpaperService extends WallpaperService {
 
@@ -96,6 +109,7 @@ public class SubsolarWallpaperService extends WallpaperService {
                 canvas = holder.lockCanvas();
                 if (canvas != null) {
                     Subsolar.Coordinate coordinate = Subsolar.equationOfTime();
+                    DecimalFormat format = new DecimalFormat("###.00");
 
 //                    new RetrieveBitmapTask(this).execute("https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/" + coordinate.longitude + "," + coordinate.latitude + ",8,0/" + metrics.x + "x" + 1280 + "?access_token=pk.eyJ1IjoidG9mZmVlZ3J5cGhvbiIsImEiOiJjazBxajF1Mm4wOGRoM21tc2UyNmRlYWo0In0.r5yVFHioIJHF4FYdXypWNA");
 //                    if (bitmap != null) {
@@ -103,8 +117,8 @@ public class SubsolarWallpaperService extends WallpaperService {
 //                    }
 
                     //TODO double confirm if I got the right tile
-                    double x = (coordinate.longitude + 180.0) / 2.8125 + 1.0;
-                    double y = (coordinate.latitude + 85.0511) / 1.3289234375 + 1.0;
+                    double x = (coordinate.longitude + 180.0) / 2.8125 - 1.0;
+                    double y = (coordinate.latitude + 85.0511) / 1.3289234375 - 1.0;
                     Point tile = new Point((int) x, (int) y);
                     double dX = x - tile.x;
                     double dY = y - tile.y;
@@ -120,6 +134,8 @@ public class SubsolarWallpaperService extends WallpaperService {
                     int firstY = (int) (y - nV / 2);
 
                     pY = pY - (tile.y - firstY) * bitmapLength;
+
+//                    new RetrieveLocationAsyncTask().execute(new Subsolar.Coordinate(Double.valueOf(format.format(coordinate.latitude)), Double.valueOf(format.format(coordinate.longitude))));
 
                     Paint refresh = new Paint();
                     refresh.setColor(Color.BLACK);
@@ -192,9 +208,10 @@ public class SubsolarWallpaperService extends WallpaperService {
                         west -= 1;
                     }
 
-                    text.setTextSize(100);
+                    text.setTextSize(60);
                     refresh.setColor(Color.YELLOW);
-                    canvas.drawCircle(metrics.x / 2, metrics.y / 2, 50, refresh);
+                    refresh.setAlpha(150);
+                    canvas.drawCircle(metrics.x / 2, metrics.y / 2, 30, refresh);
 
                     //TODO allow user to add image as their sun haha so that their SO can be their sun
 
@@ -205,17 +222,31 @@ public class SubsolarWallpaperService extends WallpaperService {
                         Log.d("ADDRESSES", addresses.toString());
                         String city = addresses.get(0).getLocality();
                         String country = addresses.get(0).getCountryName();
-                        canvas.drawText(String.format("%s, %s", city, country), metrics.x / 16, metrics.y * 5/8, text);
+                        if (country.length() >= 15) {
+                            Pattern pattern = Pattern.compile("[A-Z\\s]+");
+                            Matcher matcher = pattern.matcher(country);
+                            StringBuilder res = new StringBuilder();
+                            while (matcher.find()) {
+                                res.append(matcher.group());
+                            }
+                            country = res.toString();
+                        }
+                        String locale;
+                        if (city == null) {
+                            locale = country;
+                        } else {
+                            locale = String.format("%s, %s", city, country);
+                        }
+                        canvas.drawText(locale, metrics.x / 2 - 150, metrics.y /2, text);
                     } catch (IOException e) {
                         e.printStackTrace();
-                        canvas.drawText("Ocean", metrics.x / 8, metrics.y / 2, text);
+//                        canvas.drawText("Ocean", metrics.x / 2 - 200, metrics.y * 5/8, text);
                     }
 
                     // Draw Lat, Long
                     text.setTypeface(dense);
                     text.setTextSize(40);
-                    DecimalFormat format = new DecimalFormat("###.00");
-                    canvas.drawText(String.format("%s, %s", format.format(coordinate.latitude), format.format(coordinate.longitude)), metrics.x / 8, metrics.y / 2 + 40, text);
+                    canvas.drawText(String.format("%s, %s", format.format(coordinate.latitude), format.format(coordinate.longitude)), metrics.x / 2 - 150, metrics.y / 2 + 40, text);
                 }
             } finally {
                 if (canvas != null) {
@@ -286,6 +317,34 @@ public class SubsolarWallpaperService extends WallpaperService {
         @Override
         protected void onPostExecute(Bitmap bitmap) {
             engine.onBitmapRetrieved(bitmap);
+        }
+    }
+
+    static class RetrieveLocationAsyncTask extends AsyncTask<Subsolar.Coordinate, Void, ArrayList<String>> {
+
+        @Override
+        protected ArrayList<String> doInBackground(Subsolar.Coordinate... coordinates) {
+            ArrayList<String> result = new ArrayList<>();
+            try {
+                URL url = new URL(String.format("https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=%s&lon=%s&zoom=10&addressdetails=1", coordinates[0].latitude, coordinates[0].longitude));
+                Log.d("URL", String.valueOf(url));
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setDoInput(true);
+                connection.connect();
+                InputStream input = connection.getInputStream();
+                JsonReader reader = new JsonReader(new InputStreamReader(input, StandardCharsets.UTF_8));
+                while (reader.hasNext()) {
+                    Log.d("JSON", reader.nextName());
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return result;
+        }
+
+        @Override
+        protected void onPostExecute(ArrayList<String> result) {
+
         }
     }
 
