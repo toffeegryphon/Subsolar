@@ -1,11 +1,6 @@
 package com.toffeegryphon.solartime;
 
-import android.util.Log;
-
 import java.util.Calendar;
-import java.lang.Math;
-import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.TimeZone;
 
 import static java.lang.Math.PI;
@@ -34,7 +29,7 @@ class Subsolar {
         calendar.setTimeZone(TimeZone.getTimeZone("GMT"));
         double D = calendar.get(Calendar.DAY_OF_YEAR) - 0.16; // Day of year, -0.16 is minor adjustment
         double t = calendar.get(Calendar.HOUR_OF_DAY) + calendar.get(Calendar.MINUTE) / 60.0 + calendar.get(Calendar.SECOND) / 3600.0;
-        Log.d("T", String.valueOf(t));
+//        Log.d("T", String.valueOf(t));
 
         double W = 360.0 / 365.24;
         double A = W * (D + 10.0);
@@ -57,7 +52,7 @@ class Subsolar {
         double lon = ((60 * (12 - t)) - EOT) / 4.0;
 //        Log.d("LONG", String.valueOf(lon));
 
-        Log.d("LONG_LAT", lon + ", " + lat);
+//        Log.d("LONG_LAT", lon + ", " + lat);
 
         return new Coordinate(lat, lon);
     }

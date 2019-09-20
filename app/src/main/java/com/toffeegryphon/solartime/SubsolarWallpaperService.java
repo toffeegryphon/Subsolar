@@ -14,7 +14,6 @@ import android.graphics.drawable.BitmapDrawable;
 import android.location.Address;
 import android.location.Geocoder;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.service.wallpaper.WallpaperService;
@@ -23,19 +22,8 @@ import android.util.DisplayMetrics;
 import android.util.JsonReader;
 import android.util.Log;
 import android.util.SparseArray;
-import android.util.SparseIntArray;
 import android.view.SurfaceHolder;
 import android.view.WindowManager;
-
-import androidx.core.content.res.ResourcesCompat;
-
-import org.json.JSONObject;
-import org.xml.sax.SAXException;
-import org.xml.sax.XMLReader;
-import org.xml.sax.helpers.XMLReaderFactory;
-import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserException;
-import org.xmlpull.v1.XmlPullParserFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,7 +33,6 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -61,7 +48,7 @@ public class SubsolarWallpaperService extends WallpaperService {
         manager.getDefaultDisplay().getMetrics(metrics);
         int width = metrics.widthPixels;
         int height = metrics.heightPixels;
-        Log.d("METRICS", width + ", " + height);
+//        Log.d("METRICS", width + ", " + height);
 
         return new SubsolarEngine(new Point(width, height));
     }
@@ -122,13 +109,13 @@ public class SubsolarWallpaperService extends WallpaperService {
                     Point tile = new Point((int) x, (int) y);
                     double dX = x - tile.x;
                     double dY = y - tile.y;
-                    Log.d("TILE", x + ", " + y);
-                    Log.d("DELTA", dX + ", " + dY);
+//                    Log.d("TILE", x + ", " + y);
+//                    Log.d("DELTA", dX + ", " + dY);
                     String tileUrl = String.format(Locale.US,"tile_%d_%d", tile.x, tile.y);
-                    Log.d("URL", tileUrl);
+//                    Log.d("URL", tileUrl);
                     int pX = (int) (metrics.x / 2 - dX * bitmapLength);
                     int pY = (int) (metrics.y / 2 - dY * bitmapLength);
-                    Log.d("POS", pX + ", " + pY);
+//                    Log.d("POS", pX + ", " + pY);
 
                     int nV = metrics.y / bitmapLength + 2;
                     int firstY = (int) (y - nV / 2);
@@ -219,7 +206,7 @@ public class SubsolarWallpaperService extends WallpaperService {
                     Geocoder geocoder = new Geocoder(getApplicationContext(), Locale.getDefault());
                     try {
                         List<Address> addresses = geocoder.getFromLocation(coordinate.latitude, coordinate.longitude, 1);
-                        Log.d("ADDRESSES", addresses.toString());
+//                        Log.d("ADDRESSES", addresses.toString());
                         String city = addresses.get(0).getLocality();
                         String country = addresses.get(0).getCountryName();
                         if (country.length() >= 15) {
@@ -271,7 +258,7 @@ public class SubsolarWallpaperService extends WallpaperService {
             Canvas columnCanvas = new Canvas(column);
             for (int j = firstY; j <= firstY + nV; j++) {
                 String tileId = String.format(Locale.US,"tile_%d_%d", tileX, j);
-                Log.d("ID", tileId);
+//                Log.d("ID", tileId);
                 int resId = getResources().getIdentifier(tileId, "drawable", getPackageName());
                 Bitmap tileBitmap = ((BitmapDrawable) Objects.requireNonNull(getDrawable(resId))).getBitmap();
                 columnCanvas.drawBitmap(tileBitmap, null, new Rect(0, (j - firstY) * bitmapLength, bitmapLength, (j - firstY) * bitmapLength + bitmapLength), null);
@@ -327,14 +314,14 @@ public class SubsolarWallpaperService extends WallpaperService {
             ArrayList<String> result = new ArrayList<>();
             try {
                 URL url = new URL(String.format("https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=%s&lon=%s&zoom=10&addressdetails=1", coordinates[0].latitude, coordinates[0].longitude));
-                Log.d("URL", String.valueOf(url));
+//                Log.d("URL", String.valueOf(url));
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                 connection.setDoInput(true);
                 connection.connect();
                 InputStream input = connection.getInputStream();
                 JsonReader reader = new JsonReader(new InputStreamReader(input, StandardCharsets.UTF_8));
                 while (reader.hasNext()) {
-                    Log.d("JSON", reader.nextName());
+//                    Log.d("JSON", reader.nextName());
                 }
             } catch (IOException e) {
                 e.printStackTrace();
